@@ -8,7 +8,8 @@ battle_level=3
 sensor_node=2
 selected_id=0
 data_prob=[]
-
+queue_len=10
+distance_level=5
 S=[]
 def env_init():
     global S,selected_id,data_prob
@@ -46,6 +47,24 @@ myc=C()
 # print(c)
 # print(a)
 myc.init()
-print(S)
-print(selected_id)
-print(data_prob)
+# print(S)
+# print(selected_id)
+# print(data_prob)
+ar1=np.tile(np.array([battle_level-1,queue_len-1,distance_level-1]),(sensor_node,1))
+# print(ar1)
+# print(ar1.shape)
+
+# print(type(ar1))
+# print(type(tuple(ar1.tolist())))
+
+
+
+
+c=np.array([[1,2,4],[2,4,2]])
+a=c.tolist()
+print(a)
+b=tuple(a)
+print(type(b))
+print(b)
+Q={b:1}
+print(Q[b])

@@ -4,17 +4,17 @@ from gym import spaces
 
 #define constant value
 
-queue_len=20
-battle_level=40
+queue_len=5
+battle_level=10
 distance_level=5
-sensor_node=10
+sensor_node=3
 
 selected_id=0
 data_prob=[]
 S=[]
 
 def env_init():
-    global S,selected_id,data_prob
+    
     B=np.random.randint(1,battle_level,sensor_node).reshape(-1,1)
     D=np.random.randint(0,10,sensor_node).reshape(-1,1)
     H=np.random.randint(0,5,sensor_node).reshape(-1,1)
@@ -23,6 +23,9 @@ def env_init():
     #S[sensor_node][0]  B  [1] D [2] H
 
     data_prob=np.ones(sensor_node)*0.1
+    return S,selected_id,data_prob
+
+
     
 def funEh(distance):
     Eh=[5,5,4,4,3]
@@ -37,8 +40,7 @@ def calculate_transprob(sensor_id,selected,switch=None):
     global S
     if selected==True:
         #BH
-        if (switch!=0 and switch!=1):
-            raise Exception("Invalid switch",switch)
+        assert switch==0 or switch ==1
         if switch==0:
             S[sensor_id][0]=min(S[sensor_id][0]+funEh(S[sensor_id][2]),battle_level)
         else:
@@ -70,10 +72,10 @@ class nsEnv(gym.Env):
     def __init__(self,sensor_node):
         self.action_space = spaces.Discrete(sensor_node)
 
-        self.lowstate=np.array([0,0,0])
-        self.highstate=np.array([battle_level-1,queue_len-1,distance_level-1])
-
-        self.observation_space = spaces.Box(low=self.lowstate,high=self.highstate,shape=(sensor_node,3),dtype=np.uint8)
+        self.lowstate=np.tile(np.array([0,0,0]),(sensor_node,1))
+        self.highstate=np.tile(np.array([battle_level-1,queue_len-1,distance_level-1]),(sensor_node,1))
+        
+        self.observation_space = spaces.Box(low=self.lowstate,high=self.highstate,dtype=np.uint8)
 
 
     def step(self,action):
@@ -91,10 +93,10 @@ class nsEnv(gym.Env):
     
         return self._get_obs(),reward,done,{}
     def _get_obs(self):
-        return (S)
+        return S
     def reset(self):
-        
-        env_init()
+        global S,selected_id,data_prob
+        S,selected_id,data_prob=env_init()
         return self._get_obs()
 
 #switch EH or DT Env
@@ -104,7 +106,7 @@ class chEnv(gym.Env):
         
         self.lowstate=np.array([0,0,0])
         self.highstate=np.array([battle_level-1,queue_len-1,distance_level-1])
-        self.observation_space = spaces.Box(low=self.lowstate,high=self.highstate,shape=(1,3),dtype=np.uint8)
+        self.observation_space = spaces.Box(low=self.lowstate,high=self.highstate,dtype=np.uint8)
     def step(self,action):
         done=False
         reward=0.0
@@ -113,13 +115,14 @@ class chEnv(gym.Env):
 
         if S[selected_id][0] ==0:
             done = True
-        return self._get_obs,reward,done,{}
+        return self._get_obs(),reward,done,{}
 
     def _get_obs(self):
-        return (S[selected_id])
+        return S[selected_id]
 
     def reset(self):
-        env_init()
+        global S,selected_id,data_prob
+        S,selected_id,data_prob=env_init()
         return self._get_obs()
 
 
