@@ -113,7 +113,7 @@ def q_learning(ns,ch, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1)
                 
             if done:
                 break
-            if t>500:
+            if t>50:
                 break
 
 
@@ -121,5 +121,5 @@ def q_learning(ns,ch, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1)
     
     return nsQ,chQ, stats
 
-nsQ,chQ, stats = q_learning(ns,ch, 1000)
+nsQ,chQ, stats = q_learning(ns,ch, 10000)
 plotting.plot_episode_stats(stats)

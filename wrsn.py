@@ -5,7 +5,7 @@ from gym import spaces
 #define constant value
 
 queue_len=5
-battle_level=10
+battle_level=6
 distance_level=5
 sensor_node=3
 
@@ -28,11 +28,11 @@ def env_init():
 
     
 def funEh(distance):
-    Eh=[5,5,4,4,3]
+    Eh=[2,2,2,2,2]
     return Eh[distance]
 
 def funPh(distance):
-    Ph=[1,1,2,2,3]
+    Ph=[1,1,1,1,1]
     return Ph[distance]    
 
 
