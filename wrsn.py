@@ -4,40 +4,40 @@ from gym import spaces
 
 #define constant value
 
-queue_len=5
-battle_level=6
-distance_level=5
-sensor_node=3
+queue_len=2
+battle_level=3
+distance_level=1
+sensor_node=2
 
-selected_id=0
+selected_id=[0]
 data_prob=[]
 S=[]
 
 def env_init():
     
-    B=np.random.randint(1,battle_level,sensor_node).reshape(-1,1)
-    D=np.random.randint(0,10,sensor_node).reshape(-1,1)
-    H=np.random.randint(0,5,sensor_node).reshape(-1,1)
+    B=np.random.randint(0,battle_level+1,sensor_node).reshape(-1,1)
+    D=np.random.randint(0,3,sensor_node).reshape(-1,1)
+    H=np.random.randint(0,1,sensor_node).reshape(-1,1)
     S=np.hstack((B,D,H))
-    selected_id=0
+    selected_id[0]=np.random.randint(0,sensor_node)
     #S[sensor_node][0]  B  [1] D [2] H
 
-    data_prob=np.ones(sensor_node)*0.3
+    data_prob=np.ones(sensor_node)*0.6
     return S,selected_id,data_prob
 
 
     
 def funEh(distance):
-    Eh=[2,2,2,2,2]
+    Eh=[1,1]
     return Eh[distance]
 
 def funPh(distance):
-    Ph=[1,1,1,1,1]
+    Ph=[1,1]
     return Ph[distance]    
 
 
-def calculate_transprob(sensor_id,selected,switch=None):
-    global S
+def calculate_transprob(S,sensor_id,selected,switch=None):
+    data_overflow=0
     if selected==True:
         #BH
         assert switch==0 or switch ==1
@@ -82,14 +82,12 @@ class nsEnv(gym.Env):
         done=False
         reward=0.0
         #TO DO
-        
+        global S,selected_id,data_prob
+        selected_id[0]=action
         for i in range(sensor_node):
             if i != action:
-                reward += calculate_transprob(i,False)
-        for i in range(sensor_node):
-            if S[i][0]==0:
-                done = True
-                break
+                reward += calculate_transprob(S,i,False)
+        
     
         return self._get_obs(),reward,done,{}
     def _get_obs(self):
@@ -110,15 +108,15 @@ class chEnv(gym.Env):
     def step(self,action):
         done=False
         reward=0.0
-        
-        reward=calculate_transprob(selected_id,True,action)
+        global S,selected_id,data_prob
+        reward=calculate_transprob(S,selected_id[0],True,action)
 
-        if S[selected_id][0] ==0:
-            done = True
+        
+        
         return self._get_obs(),reward,done,{}
 
     def _get_obs(self):
-        return S[selected_id]
+        return S[selected_id[0]]
 
     def reset(self):
         global S,selected_id,data_prob
