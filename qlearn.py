@@ -87,7 +87,8 @@ def q_learning(ns,ch, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1)
             ns_next_state, ns_reward, done, _ = ns.step(ns_action)
             ns_next_state=tuple(ns_next_state.flatten())
             # Update statistics
-            stats.episode_rewards[i_episode] += ns_reward
+            
+            stats.episode_rewards[i_episode] += ns_reward 
             stats.episode_lengths[i_episode] = t
             
             # TD Update
@@ -113,7 +114,7 @@ def q_learning(ns,ch, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1)
                 
             if done:
                 break
-            if t>50:
+            if t>50000:
                 break
 
 
@@ -121,5 +122,8 @@ def q_learning(ns,ch, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1)
     
     return nsQ,chQ, stats
 
-nsQ,chQ, stats = q_learning(ns,ch, 10000)
+nsQ,chQ, stats = q_learning(ns,ch, 1000)
+for i in range(len(stats.episode_rewards)):
+    stats.episode_rewards[i]/=50
+
 plotting.plot_episode_stats(stats)

@@ -22,7 +22,7 @@ def env_init():
     selected_id=0
     #S[sensor_node][0]  B  [1] D [2] H
 
-    data_prob=np.ones(sensor_node)*0.1
+    data_prob=np.ones(sensor_node)*0.3
     return S,selected_id,data_prob
 
 
