@@ -122,7 +122,7 @@ def q_learning(ns,ch, num_episodes, discount_factor=1.0, alpha=0.5, epsilon=0.1)
     
     return nsQ,chQ, stats
 
-nsQ,chQ, stats = q_learning(ns,ch, 1000)
+nsQ,chQ, stats = q_learning(ns,ch, 2000)
 for i in range(len(stats.episode_rewards)):
     stats.episode_rewards[i]/=50
 
