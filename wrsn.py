@@ -38,6 +38,7 @@ def funPh(distance):
 
 def calculate_transprob(S,sensor_id,selected,switch=None):
     data_overflow=0
+    reward=0
     if selected==True:
         #BH
         assert switch==0 or switch ==1
@@ -47,10 +48,14 @@ def calculate_transprob(S,sensor_id,selected,switch=None):
             if funPh(S[sensor_id][2])<S[sensor_id][0]:
                 S[sensor_id][0]=S[sensor_id][0]-funPh(S[sensor_id][2])
                 S[sensor_id][1]=max(S[sensor_id][1]-1,0)
+                if S[sensor_id][1]==0:
+                    reward=-1
+                else:
+                    reward=1
             S[sensor_id][1]=S[sensor_id][1]+1 if data_prob[sensor_id]>np.random.uniform(0,1) else S[sensor_id][1]
             if S[sensor_id][1]>queue_len:
                 S[sensor_id][1]=queue_len
-                data_overflow=-1
+                data_overflow=1
             else:
                 data_overflow=0
    
@@ -58,11 +63,12 @@ def calculate_transprob(S,sensor_id,selected,switch=None):
         S[sensor_id][1]=S[sensor_id][1]+1 if data_prob[sensor_id]>np.random.uniform(0,1) else S[sensor_id][1]
         if S[sensor_id][1]>queue_len:
             S[sensor_id][1]=queue_len
-            data_overflow=-1
+            data_overflow=1
+            reward=-1
         else:
             data_overflow=0
 
-    return data_overflow
+    return data_overflow,reward
 
 
 
@@ -81,15 +87,16 @@ class nsEnv(gym.Env):
     def step(self,action):
         done=False
         reward=0.0
+        data_overflow=0
         #TO DO
         global S,selected_id,data_prob
         selected_id[0]=action
         for i in range(sensor_node):
             if i != action:
-                reward += calculate_transprob(S,i,False)
-        
-    
-        return self._get_obs(),reward,done,{}
+                i_data_overflow,i_reward = calculate_transprob(S,i,False)
+                reward+=i_reward
+                data_overflow+=i_data_overflow
+        return self._get_obs(),reward,done,data_overflow
     def _get_obs(self):
         return S
     def reset(self):
@@ -109,11 +116,11 @@ class chEnv(gym.Env):
         done=False
         reward=0.0
         global S,selected_id,data_prob
-        reward=calculate_transprob(S,selected_id[0],True,action)
+        data_overflow,reward=calculate_transprob(S,selected_id[0],True,action)
 
         
         
-        return self._get_obs(),reward,done,{}
+        return self._get_obs(),reward,done,data_overflow
 
     def _get_obs(self):
         return S[selected_id[0]]

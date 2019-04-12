@@ -81,7 +81,8 @@ def q_learning(ns,ch, num_episodes, discount_factor=0.99, alpha=0.25, epsilon=0.
     # Keeps track of useful statistics
     stats = plotting.EpisodeStats(
         episode_lengths=np.zeros(num_episodes),
-        episode_rewards=np.zeros(num_episodes))    
+        episode_rewards=np.zeros(num_episodes),
+        episode_transbag=np.zeros(num_episodes))    
     
     # The policy we're following
     ns_policy = make_epsilon_greedy_policy(nsQ, epsilon, ns.action_space.n)
@@ -108,14 +109,14 @@ def q_learning(ns,ch, num_episodes, discount_factor=0.99, alpha=0.25, epsilon=0.
             # Take a step
             ns_action_probs = ns_policy(ns_state)
             ns_action = np.random.choice(np.arange(len(ns_action_probs)), p=ns_action_probs)
-            ns_next_state, ns_reward, done, _ = ns.step(ns_action)
+            ns_next_state, ns_reward, done, data_overflow = ns.step(ns_action)
             assert ns_action==selected_id[0]
             ns_next_state=tuple(ns_next_state.flatten())
             # Update statistics
           
             stats.episode_rewards[i_episode] += ns_reward 
             stats.episode_lengths[i_episode] = t
-            
+            stats.episode_transbag[i_episode]+=data_overflow
             # TD Update
             ns_best_next_action = np.argmax(nsQ[ns_next_state])    
             td_target = ns_reward + discount_factor * nsQ[ns_next_state][ns_best_next_action]
@@ -127,8 +128,9 @@ def q_learning(ns,ch, num_episodes, discount_factor=0.99, alpha=0.25, epsilon=0.
             ch_state= tuple(wr.S[ns_action].flatten())
             ch_action_probs = ch_policy(ch_state)
             ch_action = np.random.choice(np.arange(len(ch_action_probs)), p=ch_action_probs)
-            ch_next_state, ch_reward, _, _ = ch.step(ch_action)
+            ch_next_state, ch_reward, _, data_overflow = ch.step(ch_action)
             ch_next_state=tuple(ch_next_state.flatten())
+            stats.episode_transbag[i_episode]+=data_overflow
             # TD Update
             
             ch_best_next_action = np.argmax(chQ[ch_next_state])    
@@ -146,7 +148,7 @@ def q_learning(ns,ch, num_episodes, discount_factor=0.99, alpha=0.25, epsilon=0.
     
     return nsQ,chQ, stats
 
-nsQ,chQ, stats = q_learning(ns,ch, 5000)
+nsQ,chQ, stats = q_learning(ns,ch, 10000)
 for i in range(len(stats.episode_rewards)):
     stats.episode_rewards[i]/=1
 
