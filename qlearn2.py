@@ -31,7 +31,7 @@ def make_epsilon_greedy_policy(Q, epsilon, nA):
         return A
     return policy_fn
 
-def q_learning(env, num_episodes, discount_factor=0.99, alpha=0.25, epsilon=0.05):
+def q_learning(env, num_episodes,explor_epi, discount_factor=0.99, alpha=0.25, epsilon=0.15):
     """
     Args:
         env: OpenAI environment.
@@ -81,21 +81,20 @@ def q_learning(env, num_episodes, discount_factor=0.99, alpha=0.25, epsilon=0.05
         episode_transbag=np.zeros(num_episodes))    
     
     # The policy we're following
-    policy = make_epsilon_greedy_policy(Q, epsilon, env.action_space.n)
+    
     
 
     for i_episode in range(num_episodes):
         # Print out which episode we're on, useful for debugging.
-        if (i_episode + 1) % 1 == 0:
-            print("\rEpisode {}/{}.".format(i_episode + 1, num_episodes), end="")
-            sys.stdout.flush()
-        
+        if(i_episode<=explor_epi):
+            policy = make_epsilon_greedy_policy(Q, epsilon, env.action_space.n)
+        else:
+            policy = make_epsilon_greedy_policy(Q, 0.0, env.action_space.n)
+        sys.stdout.flush()
+        last_reward = stats.episode_transbag[i_episode - 1]
         # Reset the environment and pick the first action
         
-        state=env.reset()
-        
-        state=tuple(state.flatten())
-        # assert isinstance(ns_state,tuple)
+        state=env.reset_test()
         
         # One step in the environment
         
@@ -105,9 +104,7 @@ def q_learning(env, num_episodes, discount_factor=0.99, alpha=0.25, epsilon=0.05
             # Take a step
             action_probs = policy(state)
             action = np.random.choice(np.arange(len(action_probs)), p=action_probs)
-            next_state, reward, done, data_overflow = env.step(action)
-            
-            next_state=tuple(next_state.flatten())
+            next_state, reward, done, data_overflow = env.step(action)        
             # Update statistics
           
             stats.episode_rewards[i_episode] += reward 
@@ -122,17 +119,17 @@ def q_learning(env, num_episodes, discount_factor=0.99, alpha=0.25, epsilon=0.05
             state = next_state
             
             
-            if t>200:
+            if t>300:
                 break
 
-
+        print("\r@ Episode {}/{} ({})".format(i_episode + 1, num_episodes, last_reward), end="")
 
     
     return Q, stats
 
 env=wrsn(sensor_node)
 print(((queue_len+1)*(battle_level+1)*distance_level)**sensor_node)
-Q, stats = q_learning(env, 20000)
+Q, stats = q_learning(env, 250,200)
 for i in range(len(stats.episode_rewards)):
     stats.episode_rewards[i]/=1
 

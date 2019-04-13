@@ -4,10 +4,10 @@ from gym import spaces
 
 #define constant value
 
-queue_len=4
-battle_level=4
-distance_level=2
-sensor_node=5
+queue_len=2
+battle_level=2
+distance_level=1
+sensor_node=1
 
 
 def env_init():
@@ -19,9 +19,15 @@ def env_init():
     
     #S[sensor_node][0]  B  [1] D [2] H
 
-    data_prob=np.ones(sensor_node)*0.6
+    data_prob=np.ones(sensor_node)*0.5
     return S,data_prob
-
+def env_init_test():
+    B=np.ones(sensor_node,dtype=int).reshape(-1,1)
+    D=np.zeros(sensor_node,dtype=int).reshape(-1,1)
+    H=np.ones(sensor_node,dtype=int).reshape(-1,1)
+    S=np.hstack((B,D,H))
+    data_prob=np.ones(sensor_node)*1
+    return S,data_prob
 def funEh(distance):
     Eh=[1,1]
     return Eh[distance]
@@ -35,6 +41,13 @@ def calculate_transprob(S,action,data_prob):
     reward=0
     sensor_id=action//2
     switch=action%2
+    for i in range(sensor_node):
+        S[i][1]=S[i][1]+1 if data_prob[i]>np.random.uniform(0,1) else S[i][1]
+        if S[i][1]>queue_len:
+            S[i][1]=queue_len
+            data_overflow+=1
+            
+            
     assert switch==0 or switch ==1
     if switch==0:
         S[sensor_id][0]=min(S[sensor_id][0]+funEh(S[sensor_id][2]),battle_level)
@@ -42,17 +55,15 @@ def calculate_transprob(S,action,data_prob):
         if funPh(S[sensor_id][2])<=S[sensor_id][0]:
             S[sensor_id][0]=S[sensor_id][0]-funPh(S[sensor_id][2])
             if S[sensor_id][1]==0:
-                reward=-1
+                #reward=-1
+                pass
             else:
                 reward=1
                 S[sensor_id][1]-=1
         else:
-            reward=-1
-    for i in range(sensor_node):
-        S[i][1]=S[i][1]+1 if data_prob[i]>np.random.uniform(0,1) else S[i][1]
-        if S[i][1]>queue_len:
-            S[i][1]=queue_len
-            data_overflow+=1
+            #reward=-1
+            pass
+    
             
     return S,reward,data_overflow
 
@@ -72,11 +83,13 @@ class wrsn(gym.Env):
         reward=0.0
         self.S,reward,data_overflow=calculate_transprob(self.S,action,self.data_prob)
         #if data_overflow
-        return self.S,reward,done,data_overflow
+        return self._get_obs(),reward,done,data_overflow
     def _get_obs(self):
-        return self.S
+        return tuple(self.S.flatten())
     def reset(self):
         self.S,self.data_prob=env_init()
         return self._get_obs()    
-
+    def reset_test(self):
+        self.S,self.data_prob=env_init_test()
+        return self._get_obs() 
 
