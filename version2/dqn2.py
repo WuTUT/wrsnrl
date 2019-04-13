@@ -51,17 +51,10 @@ class Estimator():
         X = tf.to_float(self.X_pl)
         batch_size = tf.shape(self.X_pl)[0]
 
-        # Three convolutional layers
-        conv1 = tf.contrib.layers.conv2d(
-            X, 32, 8, 4, activation_fn=tf.nn.relu)
-        conv2 = tf.contrib.layers.conv2d(
-            conv1, 64, 4, 2, activation_fn=tf.nn.relu)
-        conv3 = tf.contrib.layers.conv2d(
-            conv2, 64, 3, 1, activation_fn=tf.nn.relu)
-
         # Fully connected layers
-        flattened = tf.contrib.layers.flatten(conv3)
-        fc1 = tf.contrib.layers.fully_connected(flattened, 512)
+        
+        fc1 = tf.contrib.layers.fully_connected(X, 512)
+        
         self.predictions = tf.contrib.layers.fully_connected(fc1, env.action_space.n)
 
         # Get the predictions for the chosen actions only
