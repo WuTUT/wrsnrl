@@ -13,8 +13,8 @@ from sklearn.linear_model import SGDRegressor
 from sklearn.kernel_approximation import RBFSampler
 env=wrsn(sensor_node)
 from sklearn.externals import joblib
-observation_examples = np.array([tuple(env.observation_space.sample().flatten()) for x in range(10000)])
-#print(observation_examples.shape)
+observation_examples = np.array([tuple(env.observation_space.sample().flatten()) for x in range(1000000)])
+
 scaler = sklearn.preprocessing.StandardScaler()
 scaler.fit(observation_examples)
 
@@ -140,25 +140,25 @@ def q_learning(env, estimator, num_episodes, discount_factor=1.0, epsilon_start=
             # Update the function approximator using our target
             estimator.update(state, action, td_target)
             
-            print("\rStep {} @ Episode {}/{} r({}) t({})".format(t, i_episode + 1, num_episodes, last_reward,last_transbag), end="")
+            
                 
             if done:
                 break
-            if t>=200:
+            if t>=100:
                 break
             state = next_state
-    
+        print("\r@ Episode {}/{} r({}) t({})".format(i_episode + 1, num_episodes, last_reward,last_transbag), end="")
     return stats
 
 estimator = Estimator()
-stats = q_learning(env, estimator, 100)
+stats = q_learning(env, estimator, 1000)
 
 plotting.plot_episode_stats(stats)
 
 joblib.dump(featurizer,"fearture.model")
 joblib.dump(estimator,"estimator.model")
 joblib.dump(scaler,"scaler.model")
-
+print(" ",end="\n")
 def fa_test(env, estimator, num_episodes):
     stats_test = plotting.EpisodeStats(
         episode_lengths=np.zeros(num_episodes),
@@ -195,7 +195,9 @@ def fa_test(env, estimator, num_episodes):
         print("\r@ Episode {}/{} ({})".format(i_episode + 1, num_episodes, last_reward), end="")
 
     return stats_test
-stats_test=fa_test(env,estimator,10)
+stats_test=fa_test(env,estimator,20)
 plotting.plot_episode_stats(stats_test)
 sys.stdout.flush()
+print(" ",end="\n")
 print(np.mean(stats_test.episode_transbag))
+print(np.mean(stats.episode_transbag))

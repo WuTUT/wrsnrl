@@ -119,7 +119,7 @@ def q_learning(env, num_episodes,explor_epi, discount_factor=0.99, alpha=0.25, e
             state = next_state
             
             
-            if t>300:
+            if t>1000:
                 break
 
         print("\r@ Episode {}/{} ({})".format(i_episode + 1, num_episodes, last_reward), end="")
@@ -129,7 +129,7 @@ def q_learning(env, num_episodes,explor_epi, discount_factor=0.99, alpha=0.25, e
 
 env=wrsn(sensor_node)
 print(((queue_len+1)*(battle_level+1)*distance_level)**sensor_node)
-Q, stats = q_learning(env, 250,200)
+Q, stats = q_learning(env, 1000,900)
 for i in range(len(stats.episode_rewards)):
     stats.episode_rewards[i]/=1
 
