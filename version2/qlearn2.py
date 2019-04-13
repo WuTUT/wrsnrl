@@ -129,7 +129,7 @@ def q_learning(env, num_episodes,explor_epi, discount_factor=0.99, alpha=0.25, e
 
 env=wrsn(sensor_node)
 print(((queue_len+1)*(battle_level+1)*distance_level)**sensor_node)
-Q, stats = q_learning(env, 1000,900)
+Q, stats = q_learning(env, 3000,2900)
 for i in range(len(stats.episode_rewards)):
     stats.episode_rewards[i]/=1
 
@@ -146,7 +146,7 @@ for key in list(Q.keys()):
 print(ostate)
 print(len(Q)*env.action_space.n)
 print()
-with open("Q_json.json","w") as json_file:
+with open("version2/Q_json.json","w") as json_file:
     json_file.writelines(json.dumps(Q,sort_keys=True, indent=4, separators=(',', ': ')))
         
 json_file.close()

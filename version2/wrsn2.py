@@ -7,7 +7,7 @@ from gym import spaces
 queue_len=4
 battle_level=4
 distance_level=1
-sensor_node=3
+sensor_node=4
 
 
 def env_init():

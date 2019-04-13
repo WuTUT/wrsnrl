@@ -53,9 +53,10 @@ class Estimator():
 
         # Fully connected layers
         
-        fc1 = tf.contrib.layers.fully_connected(X, 512)
+        fc1 = tf.contrib.layers.fully_connected(X, 10)
+        fc2 = tf.contrib.layers.fully_connected(fc1, 10)
         
-        self.predictions = tf.contrib.layers.fully_connected(fc1, env.action_space.n)
+        self.predictions = tf.contrib.layers.fully_connected(fc2, env.action_space.n)
 
         # Get the predictions for the chosen actions only
         gather_indices = tf.range(batch_size) * tf.shape(self.predictions)[1] + self.actions_pl
