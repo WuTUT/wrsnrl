@@ -8,7 +8,8 @@ from collections import defaultdict
 import plotting
 from plotting import *
 import json
-
+import dill
+import os
 def make_epsilon_greedy_policy(Q, epsilon, nA):
     """
     Creates an epsilon-greedy policy based on a given Q-function and epsilon.
@@ -31,7 +32,8 @@ def make_epsilon_greedy_policy(Q, epsilon, nA):
         return A
     return policy_fn
 
-def q_learning(env, num_episodes,explor_epi, discount_factor=0.99, alpha=0.25, epsilon=0.15):
+
+def q_learning(Q,env, num_episodes,explor_epi, discount_factor=0.99, alpha=0.25, epsilon=0.15):
     """
     Args:
         env: OpenAI environment.
@@ -64,7 +66,7 @@ def q_learning(env, num_episodes,explor_epi, discount_factor=0.99, alpha=0.25, e
     # for key in list(chQ1.keys()):
     #     chQ1[tuple(np.array(key.split()))] = np.array(chQ1[key].split())
     #     del chQ1[key]
-    Q = defaultdict(lambda: np.zeros(env.action_space.n))
+   
     
     # for k,v in nsQ1.items():
     #     nsQ[k]=v
@@ -86,7 +88,7 @@ def q_learning(env, num_episodes,explor_epi, discount_factor=0.99, alpha=0.25, e
 
     for i_episode in range(num_episodes):
         # Print out which episode we're on, useful for debugging.
-        if(i_episode<=explor_epi):
+        if(i_episode<explor_epi):
             policy = make_epsilon_greedy_policy(Q, epsilon, env.action_space.n)
         else:
             policy = make_epsilon_greedy_policy(Q, 0.0, env.action_space.n)
@@ -127,28 +129,40 @@ def q_learning(env, num_episodes,explor_epi, discount_factor=0.99, alpha=0.25, e
     
     return Q, stats
 
-env=wrsn(sensor_node)
-print(((queue_len+1)*(battle_level+1)*distance_level)**sensor_node)
-Q, stats = q_learning(env, 3000,2900)
-for i in range(len(stats.episode_rewards)):
-    stats.episode_rewards[i]/=1
 
-plotting.plot_episode_stats(stats)
 
-ostate=0
-for key in list(Q.keys()):
-    for a in range(env.action_space.n):
-        if np.abs(Q[key][a])<1e-3:
-            ostate+=1
-
-    Q[str(list(key))] = str(Q[key])
-    del Q[key]
-print(ostate)
-print(len(Q)*env.action_space.n)
-print()
-with open("version2/Q_json.json","w") as json_file:
-    json_file.writelines(json.dumps(Q,sort_keys=True, indent=4, separators=(',', ': ')))
+if __name__ == '__main__':
+    env=wrsn(sensor_node)
+    if os.path.exists("version2/qmodels/Q.model"):
+        Q=dill.load(open("version2/qmodels/Q.model","rb"))
+        print("exists Q model")
+    else:
         
-json_file.close()
+        Q = defaultdict(lambda: np.zeros(env.action_space.n))
+    print((((queue_len+1)*(battle_level+1)*distance_level)**sensor_node)*env.action_space.n)
+    explor_epi=2900
+    Q, stats = q_learning(Q,env, 3000,explor_epi)
+    print("avarage loss bags: {}".format(np.mean(stats.episode_transbag[explor_epi:])),end="\n")
 
+    plotting.plot_episode_stats(stats)
+    with open("version2/qmodels/Q.model","wb") as df:
+        dill.dump(Q,df)
+        print("save qmodel",end="\n")
+
+    
+    ostate=0
+    for key in list(Q.keys()):
+        for a in range(env.action_space.n):
+            if np.abs(Q[key][a])<1e-3:
+                ostate+=1
+
+        Q[str(list(key))] = str(Q[key])
+        del Q[key]
+    print("num of Q[s][a]==0 \ total Q[s][a] {}\{}".format(ostate,len(Q)*env.action_space.n),end="\n")
+    
+    
+    with open("version2/qmodels/Q_json.json","w") as json_file:
+        json_file.writelines(json.dumps(Q,sort_keys=True, indent=4, separators=(',', ': ')))
+            
+    json_file.close()
 
