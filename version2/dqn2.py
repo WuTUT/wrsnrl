@@ -47,14 +47,14 @@ class Estimator():
         self.y_pl = tf.placeholder(shape=[None], dtype=tf.float32, name="y")
         # Integer id of which action was selected
         self.actions_pl = tf.placeholder(shape=[None], dtype=tf.int32, name="actions")
-        #scalex=([battle_level,queue_len,distance_level])*sensor_node
-        X = tf.to_float(self.X_pl)#/scalex
+        scalex=([battle_level,queue_len,distance_level])*sensor_node
+        X = tf.to_float(self.X_pl)/scalex
         batch_size = tf.shape(self.X_pl)[0]
 
         # Fully connected layers
         
-        fc1 = tf.contrib.layers.fully_connected(X, 20)
-        fc2 = tf.contrib.layers.fully_connected(fc1, 16)
+        fc1 = tf.contrib.layers.fully_connected(X, 40)
+        fc2 = tf.contrib.layers.fully_connected(fc1, 32)
         
         self.predictions = tf.contrib.layers.fully_connected(fc2, env.action_space.n)
 
@@ -67,7 +67,7 @@ class Estimator():
         self.loss = tf.reduce_mean(self.losses)
 
         # Optimizer Parameters from original paper
-        self.optimizer = tf.train.RMSPropOptimizer(0.00025, 0.99, 0.0, 1e-6)
+        self.optimizer = tf.train.RMSPropOptimizer(0.00010, 0.99, 0.0, 1e-6)
         self.train_op = self.optimizer.minimize(self.loss, global_step=tf.contrib.framework.get_global_step())
 
         # Summaries for Tensorboard
@@ -247,7 +247,9 @@ def deep_q_learning(sess,
         action = np.random.choice(np.arange(len(action_probs)), p=action_probs)
         next_state, reward, done, _ = env.step(action)
         replay_memory.append(Transition(state, action, reward, next_state, done))
-        if i%500==0:
+        if i%1000==0:
+            print("\r{} in {} ".format(i,replay_memory_init_size),end="")
+            sys.stdout.flush()
             state = env.reset_test()
         else:
             state = next_state
@@ -341,6 +343,7 @@ def deep_q_learning(sess,
             episode_transbag=stats.episode_transbag[:i_episode+1])
 
     #env.monitor.close()
+    q_estimator.summary_writer.add_graph(sess.graph)
     return stats
 
 
@@ -363,13 +366,13 @@ with tf.Session() as sess:
                                     q_estimator=q_estimator,
                                     target_estimator=target_estimator,
                                     experiment_dir=experiment_dir,
-                                    num_episodes=1000,
-                                    replay_memory_size=500000,
-                                    replay_memory_init_size=50000,
+                                    num_episodes=8000,
+                                    replay_memory_size=10000000,
+                                    replay_memory_init_size=7000000,
                                     update_target_estimator_every=10000,
                                     epsilon_start=1.0,
-                                    epsilon_end=0.05,
-                                    epsilon_decay_steps=500000,
+                                    epsilon_end=0.1,
+                                    epsilon_decay_steps=7500000,
                                     discount_factor=0.99,
                                     batch_size=32):
 

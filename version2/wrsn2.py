@@ -4,10 +4,10 @@ from gym import spaces
 
 #define constant value
 
-queue_len=4
-battle_level=4
+queue_len=5
+battle_level=5
 distance_level=1
-sensor_node=4
+sensor_node=8
 
 
 def env_init():
@@ -19,14 +19,14 @@ def env_init():
     
     #S[sensor_node][0]  B  [1] D [2] H
 
-    data_prob=np.ones(sensor_node)*0.1
+    data_prob=np.ones(sensor_node)*0.055
     return S,data_prob
 def env_init_test():
     B=np.ones(sensor_node,dtype=np.uint8).reshape(-1,1)*battle_level
     D=np.zeros(sensor_node,dtype=np.uint8).reshape(-1,1)
     H=np.zeros(sensor_node,dtype=np.uint8).reshape(-1,1)
     S=np.hstack((B,D,H))
-    data_prob=np.ones(sensor_node)*0.1
+    data_prob=np.ones(sensor_node)*0.055
     return S,data_prob
 def funEh(distance):
     Eh=[1,1]
@@ -47,13 +47,13 @@ def calculate_transprob(S,action,data_prob):
         if S[i][1]>queue_len:
             S[i][1]=queue_len
             data_overflow+=1
-            reward-=1
+            reward=-1
             
     assert switch==0 or switch ==1
     if switch==0:
         if S[sensor_id][0]+funEh(S[sensor_id][2]) <= battle_level:
             S[sensor_id][0]=S[sensor_id][0]+funEh(S[sensor_id][2])
-            #reward+=1
+            reward+=1
         else:
             S[sensor_id][0]=battle_level
     else:
@@ -62,7 +62,7 @@ def calculate_transprob(S,action,data_prob):
             if S[sensor_id][1]==0:
                 reward-=1
             else:
-                #reward+=2
+                reward+=1
                 S[sensor_id][1]-=1
         else:
             reward-=1
