@@ -22,9 +22,11 @@ import tensorflow as tf
 #     print(key)
 #     print(nsQ[key])
 #     break
-a=np.array([[2,1,3,4],[2,3,4,1]])
-c=([2,1])*2
-print(c)
-b= a/c
-print(b)
-print(c[2:])
+# a=np.array([[2,1,3,4],[2,3,4,1]])
+# c=([2,1])*2
+# print(c)
+# b= a/c
+# print(b)
+# print(c[2:])
+
+print(False*2.5+2)

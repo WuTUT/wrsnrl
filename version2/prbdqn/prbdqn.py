@@ -14,6 +14,9 @@ from collections import defaultdict
 import plotting
 from plotting import *
 import json
+from replay_buffer import ReplayBuffer, PrioritizedReplayBuffer,LinearSchedule
+
+
 if "../" not in sys.path:
   sys.path.append("../")
 
@@ -47,6 +50,9 @@ class Estimator():
         self.y_pl = tf.placeholder(shape=[None], dtype=tf.float32, name="y")
         # Integer id of which action was selected
         self.actions_pl = tf.placeholder(shape=[None], dtype=tf.int32, name="actions")
+        # importance weights
+        self.importance_weights_ph = tf.placeholder(shape=[None],dtype=tf.float32, name="weight")
+
         scalex=([battle_level,queue_len,distance_level])*sensor_node
         X = tf.to_float(self.X_pl)/scalex
         batch_size = tf.shape(self.X_pl)[0]
@@ -56,18 +62,23 @@ class Estimator():
         fc1 = tf.contrib.layers.fully_connected(X, 48)
         fc2 = tf.contrib.layers.fully_connected(fc1, 32)
         
-        self.predictions = tf.contrib.layers.fully_connected(fc2, env.action_space.n)
+        self.predictions = tf.contrib.layers.fully_connected(fc2, env.action_space.n,activation_fn=None)
 
         # Get the predictions for the chosen actions only
         gather_indices = tf.range(batch_size) * tf.shape(self.predictions)[1] + self.actions_pl
         self.action_predictions = tf.gather(tf.reshape(self.predictions, [-1]), gather_indices)
 
         # Calculate the loss
-        self.losses = tf.squared_difference(self.y_pl, self.action_predictions)
-        self.loss = tf.reduce_mean(self.losses)
+        self.td_error=self.y_pl-self.action_predictions
+        # def huber_loss(x, delta=1.0):
+        #     return tf.where(tf.abs(x) < delta,tf.square(x) * 0.5,delta * (tf.abs(x) - 0.5 * delta))        
+        # huber_loss
+        self.losses = tf.where(tf.abs(self.td_error) < 1.0,tf.square(self.td_error) * 0.5,1.0 * (tf.abs(self.td_error) - 0.5),name="losses")
+        # self.losses = tf.squared_difference(self.y_pl, self.action_predictions)
+        self.loss = tf.reduce_mean(self.losses*self.importance_weights_ph)
 
         # Optimizer Parameters from original paper
-        self.optimizer = tf.train.RMSPropOptimizer(0.00010, 0.99, 0.0, 1e-6)
+        self.optimizer = tf.train.RMSPropOptimizer(0.00010, 0.95, 0.01)
         self.train_op = self.optimizer.minimize(self.loss, global_step=tf.contrib.framework.get_global_step())
 
         # Summaries for Tensorboard
@@ -93,7 +104,7 @@ class Estimator():
         """
         return sess.run(self.predictions, { self.X_pl: s })
 
-    def update(self, sess, s, a, y):
+    def update(self, sess, s, a, y, weights):
         """
         Updates the estimator towards the given targets.
 
@@ -106,13 +117,13 @@ class Estimator():
         Returns:
           The calculated loss on the batch.
         """
-        feed_dict = { self.X_pl: s, self.y_pl: y, self.actions_pl: a }
-        summaries, global_step, _, loss = sess.run(
-            [self.summaries, tf.contrib.framework.get_global_step(), self.train_op, self.loss],
+        feed_dict = { self.X_pl: s, self.y_pl: y, self.actions_pl: a, self.importance_weights_ph: weights }
+        summaries, global_step, _, loss, td_error = sess.run(
+            [self.summaries, tf.contrib.framework.get_global_step(), self.train_op, self.loss, self.td_error],
             feed_dict)
         if self.summary_writer:
             self.summary_writer.add_summary(summaries, global_step)
-        return loss
+        return loss ,td_error
 
 def copy_model_parameters(sess, estimator1, estimator2):
     """
@@ -164,15 +175,18 @@ def deep_q_learning(sess,
                     target_estimator,
                     num_episodes,
                     experiment_dir,
-                    replay_memory_size=500000,
-                    replay_memory_init_size=50000,
+                    replay_buffer_size=500000,
+                    replay_buffer_init_size=50000,
                     update_target_estimator_every=10000,
                     discount_factor=0.99,
                     epsilon_start=1.0,
                     epsilon_end=0.1,
                     epsilon_decay_steps=500000,
                     batch_size=32,
-                    record_video_every=50):
+                    prioritized_replay_alpha=0.6,
+                    prioritized_replay_beta0=0.4,
+                    prioritized_replay_beta_iters=500000,
+                    prioritized_replay_eps=1e-6):
     """
     Q-Learning algorithm for off-policy TD control using Function Approximation.
     Finds the optimal greedy policy while following an epsilon-greedy policy.
@@ -201,11 +215,12 @@ def deep_q_learning(sess,
         An EpisodeStats object with two numpy arrays for episode_lengths and episode_rewards.
     """
 
-    Transition = namedtuple("Transition", ["state", "action", "reward", "next_state", "done"])
+    
 
-    # The replay memory
-    replay_memory = []
-
+    # The replay buffer
+    
+    replay_buffer = PrioritizedReplayBuffer(replay_buffer_size,alpha=prioritized_replay_alpha)    
+    beta_schedule = LinearSchedule(prioritized_replay_beta_iters,initial_p=prioritized_replay_beta0,final_p=1.0)
     # Keeps track of useful statistics
     stats = plotting.EpisodeStats(
         episode_lengths=np.zeros(num_episodes),
@@ -219,8 +234,6 @@ def deep_q_learning(sess,
 
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
-    # if not os.path.exists(monitor_path):
-    #     os.makedirs(monitor_path)
 
     saver = tf.train.Saver()
     # Load a previous checkpoint if we find one
@@ -239,16 +252,17 @@ def deep_q_learning(sess,
         q_estimator,
         env.action_space.n)
 
-    # Populate the replay memory with initial experience
-    print("Populating replay memory...")
+    # Populate the replay buffer with initial experience
+    print("Populating replay buffer...")
     state = env.reset_test()
-    for i in range(replay_memory_init_size):
+    for i in range(replay_buffer_init_size):
         action_probs = policy(sess, state, epsilons[min(total_t, epsilon_decay_steps-1)])
         action = np.random.choice(np.arange(len(action_probs)), p=action_probs)
         next_state, reward, done, _ = env.step(action)
-        replay_memory.append(Transition(state, action, reward, next_state, done))
+        replay_buffer.add(state, action, reward, next_state, done)
+        
         if i%1000==0:
-            print("\r{} in {} ".format(i,replay_memory_init_size),end="")
+            print("\r{} in {} ".format(i,replay_buffer_init_size),end="")
             sys.stdout.flush()
             state = env.reset_test()
         else:
@@ -296,20 +310,15 @@ def deep_q_learning(sess,
             action = np.random.choice(np.arange(len(action_probs)), p=action_probs)
             next_state, reward, done, data_overflow = env.step(action)
 
-            # If our replay memory is full, pop the first element
-            if len(replay_memory) == replay_memory_size:
-                replay_memory.pop(0)
-
-            # Save transition to replay memory
-            replay_memory.append(Transition(state, action, reward, next_state, done))   
-
+            # Save transition to replay buffer
+            replay_buffer.add(state, action, reward, next_state, done)
             # Update statistics
             stats.episode_rewards[i_episode] += reward
             stats.episode_lengths[i_episode] = t
             stats.episode_transbag[i_episode]+=data_overflow
-            # Sample a minibatch from the replay memory
-            samples = random.sample(replay_memory, batch_size)
-            states_batch, action_batch, reward_batch, next_states_batch, done_batch = map(np.array, zip(*samples))
+            # Sample a minibatch from the replay buffer
+            experience = replay_buffer.sample(batch_size, beta=beta_schedule.value(total_t))
+            (states_batch, action_batch, reward_batch, next_states_batch, done_batch, weights_batch, batch_idxes) = experience
 
             # Calculate q values and targets (Double DQN)
             q_values_next = q_estimator.predict(sess, next_states_batch)
@@ -319,11 +328,13 @@ def deep_q_learning(sess,
                 discount_factor * q_values_next_target[np.arange(batch_size), best_actions]
 
             # Perform gradient descent update
-            states_batch = np.array(states_batch)
-            loss = q_estimator.update(sess, states_batch, action_batch, targets_batch)
+            loss,td_error = q_estimator.update(sess, states_batch, action_batch, targets_batch, weights_batch)
 
-            if done:
-                break
+            new_priorities = np.abs(td_error) + prioritized_replay_eps
+            replay_buffer.update_priorities(batch_idxes, new_priorities)
+
+            # if done:
+            #     break
             if t>1000:
                 break
             state = next_state
@@ -366,15 +377,19 @@ with tf.Session() as sess:
                                     q_estimator=q_estimator,
                                     target_estimator=target_estimator,
                                     experiment_dir=experiment_dir,
-                                    num_episodes=8000,
-                                    replay_memory_size=10000000,
-                                    replay_memory_init_size=7000000,
+                                    num_episodes=1100,
+                                    replay_buffer_size=3000000,
+                                    replay_buffer_init_size=1500000,
                                     update_target_estimator_every=10000,
                                     epsilon_start=1.0,
                                     epsilon_end=0.1,
-                                    epsilon_decay_steps=7500000,
+                                    epsilon_decay_steps=1000000,
                                     discount_factor=0.99,
-                                    batch_size=32):
+                                    batch_size=32,
+                                    prioritized_replay_alpha=0.6,
+                                    prioritized_replay_beta0=0.4,
+                                    prioritized_replay_beta_iters=800000,
+                                    prioritized_replay_eps=1e-6):
 
         print("\nEpisode Reward: {},Episode Transbag:{}".format(stats.episode_rewards[-1],stats.episode_transbag[-1]))
     plotting.plot_episode_stats(stats)
