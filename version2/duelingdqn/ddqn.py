@@ -239,7 +239,8 @@ def deep_q_learning(sess,
     if latest_checkpoint:
         print("Loading model checkpoint {}...\n".format(latest_checkpoint))
         saver.restore(sess, latest_checkpoint)
-
+        copy_model_parameters(sess, q_estimator, target_estimator)
+        print("\nCopied model parameters to target network.")
     total_t = sess.run(tf.contrib.framework.get_global_step())
 
     # The epsilon decay schedule
@@ -333,7 +334,7 @@ def deep_q_learning(sess,
 
             # if done:
             #     break
-            if t>1000:
+            if t>=1000:
                 break
             state = next_state
             total_t += 1
