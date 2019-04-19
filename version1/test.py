@@ -29,4 +29,8 @@ import tensorflow as tf
 # print(b)
 # print(c[2:])
 
-print(False*2.5+2)
+
+H=([0,1,2])*4
+H=np.array(H,dtype=np.uint8).reshape(-1,1)
+print(H)
+print(type(H))

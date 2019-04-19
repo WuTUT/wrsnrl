@@ -54,8 +54,8 @@ class Estimator():
 
         # Fully connected layers
         
-        fc1 = tf.contrib.layers.fully_connected(X, 48)
-        fc2 = tf.contrib.layers.fully_connected(fc1, 32)
+        fc1 = tf.contrib.layers.fully_connected(X, 64)
+        fc2 = tf.contrib.layers.fully_connected(fc1, 48)
 
         self.adv= tf.contrib.layers.fully_connected(fc2, env.action_space.n,activation_fn=None) 
         self.val= tf.contrib.layers.fully_connected(fc2, 1,activation_fn=None) 
@@ -221,9 +221,9 @@ def deep_q_learning(sess,
     beta_schedule = LinearSchedule(prioritized_replay_beta_iters,initial_p=prioritized_replay_beta0,final_p=1.0)
     # Keeps track of useful statistics
     stats = plotting.EpisodeStats(
-        episode_lengths=np.zeros(num_episodes),
+        episode_transbag=np.zeros(num_episodes),
         episode_rewards=np.zeros(num_episodes),
-        episode_transbag=np.zeros(num_episodes))
+        episode_lossbag=np.zeros(num_episodes))
 
     # Create directories for checkpoints and summaries
     checkpoint_dir = os.path.join(experiment_dir, "checkpoints")
@@ -257,7 +257,7 @@ def deep_q_learning(sess,
     for i in range(replay_buffer_init_size):
         action_probs = policy(sess, state, epsilons[min(total_t, epsilon_decay_steps-1)])
         action = np.random.choice(np.arange(len(action_probs)), p=action_probs)
-        next_state, reward, done, _ = env.step(action)
+        next_state, reward, done, _ , _= env.step(action)
         replay_buffer.add(state, action, reward, next_state, done)
         
         if i%1000==0:
@@ -307,14 +307,14 @@ def deep_q_learning(sess,
             # Take a step
             action_probs = policy(sess, state, epsilon)
             action = np.random.choice(np.arange(len(action_probs)), p=action_probs)
-            next_state, reward, done, data_overflow = env.step(action)
+            next_state, reward, done, data_overflow,data_trans = env.step(action)
 
             # Save transition to replay buffer
             replay_buffer.add(state, action, reward, next_state, done)
             # Update statistics
+            stats.episode_transbag[i_episode] += data_trans
             stats.episode_rewards[i_episode] += reward
-            stats.episode_lengths[i_episode] = t
-            stats.episode_transbag[i_episode]+=data_overflow
+            stats.episode_lossbag[i_episode] += data_overflow
             # Sample a minibatch from the replay buffer
             experience = replay_buffer.sample(batch_size, beta=beta_schedule.value(total_t))
             (states_batch, action_batch, reward_batch, next_states_batch, done_batch, weights_batch, batch_idxes) = experience
@@ -341,16 +341,16 @@ def deep_q_learning(sess,
 
         # Add summaries to tensorboard
         episode_summary = tf.Summary()
-        episode_summary.value.add(simple_value=stats.episode_rewards[i_episode], node_name="episode_reward", tag="episode_reward")
-        episode_summary.value.add(simple_value=stats.episode_lengths[i_episode], node_name="episode_length", tag="episode_length")
+        episode_summary.value.add(simple_value=stats.episode_rewards[i_episode], node_name="episode_rewards", tag="episode_rewards")
+        episode_summary.value.add(simple_value=stats.episode_lossbag[i_episode], node_name="episode_lossbag", tag="episode_lossbag")
         episode_summary.value.add(simple_value=stats.episode_transbag[i_episode],node_name="episode_transbag", tag="episode_transbag")
         q_estimator.summary_writer.add_summary(episode_summary, total_t)
         q_estimator.summary_writer.flush()
 
         yield total_t, plotting.EpisodeStats(
-            episode_lengths=stats.episode_lengths[:i_episode+1],
+            episode_transbag=stats.episode_transbag[:i_episode+1],
             episode_rewards=stats.episode_rewards[:i_episode+1],
-            episode_transbag=stats.episode_transbag[:i_episode+1])
+            episode_lossbag=stats.episode_lossbag[:i_episode+1])
 
     #env.monitor.close()
     q_estimator.summary_writer.add_graph(sess.graph)
@@ -376,19 +376,19 @@ with tf.Session() as sess:
                                     q_estimator=q_estimator,
                                     target_estimator=target_estimator,
                                     experiment_dir=experiment_dir,
-                                    num_episodes=850,
+                                    num_episodes=2500,
                                     replay_buffer_size=3000000,
-                                    replay_buffer_init_size=1500000,
+                                    replay_buffer_init_size=2000000,
                                     update_target_estimator_every=10000,
                                     epsilon_start=1.0,
-                                    epsilon_end=0.1,
-                                    epsilon_decay_steps=800000,
+                                    epsilon_end=0.01,
+                                    epsilon_decay_steps=2400000,
                                     discount_factor=0.99,
                                     batch_size=32,
                                     prioritized_replay_alpha=0.6,
                                     prioritized_replay_beta0=0.4,
-                                    prioritized_replay_beta_iters=800000,
+                                    prioritized_replay_beta_iters=1500000,
                                     prioritized_replay_eps=1e-6):
 
-        print("\nEpisode Reward: {},Episode Transbag:{}".format(stats.episode_rewards[-1],stats.episode_transbag[-1]))
+        print("\nEpisode Reward: {},Episode Transbag:{}".format(stats.episode_rewards[-1],stats.episode_lossbag[-1]))
     plotting.plot_episode_stats(stats)

@@ -4,40 +4,44 @@ from gym import spaces
 
 #define constant value
 
-queue_len=5
-battle_level=5
-distance_level=1
-sensor_node=8
+queue_len=10
+battle_level=20
+distance_level=3
+sensor_node=12
 
 
 def env_init():
     
     B=np.random.randint(0,battle_level+1,sensor_node).reshape(-1,1)
     D=np.random.randint(0,queue_len+1,sensor_node).reshape(-1,1)
-    H=np.random.randint(0,distance_level,sensor_node).reshape(-1,1)
+    #H=np.random.randint(0,distance_level,sensor_node).reshape(-1,1)
+    H=([0,1,2])*4
+    H=np.array(H,dtype=np.uint8).reshape(-1,1)
     S=np.hstack((B,D,H))
     
     #S[sensor_node][0]  B  [1] D [2] H
 
-    data_prob=np.ones(sensor_node)*0.055
+    data_prob=np.ones(sensor_node)*0.03
     return S,data_prob
 def env_init_test():
     B=np.ones(sensor_node,dtype=np.uint8).reshape(-1,1)*battle_level
     D=np.zeros(sensor_node,dtype=np.uint8).reshape(-1,1)
-    H=np.zeros(sensor_node,dtype=np.uint8).reshape(-1,1)
+    H=([0,1,2])*4
+    H=np.array(H,dtype=np.uint8).reshape(-1,1)
     S=np.hstack((B,D,H))
-    data_prob=np.ones(sensor_node)*0.055
+    data_prob=np.ones(sensor_node)*0.03
     return S,data_prob
 def funEh(distance):
-    Eh=[1,1]
+    Eh=[3,2,1]
     return Eh[distance]
 
 def funPh(distance):
-    Ph=[1,1]
+    Ph=[1,2,3]
     return Ph[distance]    
 
 def calculate_transprob(S,action,data_prob):
     data_overflow=0
+    data_trans=0
     reward=0
     sensor_id=action//2
     switch=action%2
@@ -64,12 +68,13 @@ def calculate_transprob(S,action,data_prob):
             else:
                 reward+=1
                 S[sensor_id][1]-=1
+                data_trans=1
         else:
             reward-=1
-            pass
+            
     
             
-    return S,reward,data_overflow
+    return S,reward,data_overflow,data_trans
 
 
     
@@ -81,13 +86,13 @@ class wrsn(gym.Env):
         self.highstate=np.tile(np.array([battle_level-1,queue_len-1,distance_level-1]),(sensor_node,1))
         
         self.observation_space = spaces.Box(low=self.lowstate,high=self.highstate,dtype=np.uint8)
-        self.S,self.data_prob=env_init()
+        self.S,self.data_prob=env_init_test()
     def step(self,action):
         done=False
         reward=0.0
-        self.S,reward,data_overflow=calculate_transprob(self.S,action,self.data_prob)
+        self.S,reward,data_overflow,data_trans=calculate_transprob(self.S,action,self.data_prob)
         #if data_overflow
-        return self._get_obs(),reward,done,data_overflow
+        return self._get_obs(),reward,done,data_overflow,data_trans
     def _get_obs(self):
         return tuple(self.S.flatten())
     def reset(self):
@@ -103,7 +108,7 @@ if __name__ == '__main__':
     
     for t in range(15):
         action=np.random.randint(0,2,dtype=np.uint8)
-        next_state, reward, done, data_overflow = env.step(action)
+        next_state, reward, done, data_overflow, data_trans = env.step(action)
         print("step {} state{} action {} reward {} next_state{}".format(t,state,action,reward,next_state),end="\n")
         state = next_state
         

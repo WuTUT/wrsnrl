@@ -4,15 +4,15 @@ import pandas as pd
 from collections import namedtuple
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-EpisodeStats = namedtuple("Stats",["episode_lengths", "episode_rewards","episode_transbag"])
+EpisodeStats = namedtuple("Stats",["episode_transbag", "episode_rewards","episode_lossbag"])
 
 def plot_episode_stats(stats, smoothing_window=10, noshow=False):
     # Plot the episode length over time
     fig1 = plt.figure(figsize=(10,5))
     plt.plot(stats.episode_transbag)
     plt.xlabel("Episode")
-    plt.ylabel("Episode Length")
-    plt.title("Episode Length over Time")
+    plt.ylabel("Episode transbag")
+    plt.title("Episode transbag over Time")
     if noshow:
         plt.close(fig1)
     else:
@@ -32,10 +32,10 @@ def plot_episode_stats(stats, smoothing_window=10, noshow=False):
 
     # Plot time steps and episode number
     fig3 = plt.figure(figsize=(10,5))
-    plt.plot(np.cumsum(stats.episode_lengths), np.arange(len(stats.episode_lengths)))
-    plt.xlabel("Time Steps")
-    plt.ylabel("Episode")
-    plt.title("Episode per time step")
+    plt.plot(stats.episode_lossbag)
+    plt.xlabel("Episode")
+    plt.ylabel("Episode lossbag")
+    plt.title("Episode lossbag over Time")
     if noshow:
         plt.close(fig3)
     else:
