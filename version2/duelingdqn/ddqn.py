@@ -1,5 +1,5 @@
+from replay_buffer import ReplayBuffer,PrioritizedReplayBuffer,LinearSchedule
 import gym
-from gym.wrappers import Monitor
 import itertools
 import numpy as np
 import os
@@ -8,15 +8,10 @@ import tensorflow as tf
 from collections import deque, namedtuple
 import wrsn2 as wr
 from wrsn2 import *
-import sys
 import matplotlib
-from collections import defaultdict
 import plotting
 from plotting import *
-import json
-from replay_buffer import ReplayBuffer, PrioritizedReplayBuffer,LinearSchedule
-
-
+import sys
 if "../" not in sys.path:
   sys.path.append("../")
 
@@ -61,8 +56,11 @@ class Estimator():
         
         fc1 = tf.contrib.layers.fully_connected(X, 48)
         fc2 = tf.contrib.layers.fully_connected(fc1, 32)
-        
-        self.predictions = tf.contrib.layers.fully_connected(fc2, env.action_space.n,activation_fn=None)
+
+        self.adv= tf.contrib.layers.fully_connected(fc2, env.action_space.n,activation_fn=None) 
+        self.val= tf.contrib.layers.fully_connected(fc2, 1,activation_fn=None) 
+        self.predictions = self.val+self.adv- tf.reduce_mean(self.adv,axis=1,keep_dims=True)
+        #self.predictions = tf.contrib.layers.fully_connected(fc2, env.action_space.n,activation_fn=None)
 
         # Get the predictions for the chosen actions only
         gather_indices = tf.range(batch_size) * tf.shape(self.predictions)[1] + self.actions_pl
@@ -377,18 +375,18 @@ with tf.Session() as sess:
                                     q_estimator=q_estimator,
                                     target_estimator=target_estimator,
                                     experiment_dir=experiment_dir,
-                                    num_episodes=1600,
+                                    num_episodes=850,
                                     replay_buffer_size=3000000,
                                     replay_buffer_init_size=1500000,
                                     update_target_estimator_every=10000,
                                     epsilon_start=1.0,
-                                    epsilon_end=0.01,
-                                    epsilon_decay_steps=1500000,
+                                    epsilon_end=0.1,
+                                    epsilon_decay_steps=800000,
                                     discount_factor=0.99,
                                     batch_size=32,
                                     prioritized_replay_alpha=0.6,
                                     prioritized_replay_beta0=0.4,
-                                    prioritized_replay_beta_iters=1200000,
+                                    prioritized_replay_beta_iters=800000,
                                     prioritized_replay_eps=1e-6):
 
         print("\nEpisode Reward: {},Episode Transbag:{}".format(stats.episode_rewards[-1],stats.episode_transbag[-1]))

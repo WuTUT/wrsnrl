@@ -4,10 +4,10 @@ from gym import spaces
 
 #define constant value
 
-queue_len=6
-battle_level=6
-distance_level=2
-sensor_node=10
+queue_len=5
+battle_level=5
+distance_level=1
+sensor_node=8
 
 
 def env_init():
@@ -19,14 +19,14 @@ def env_init():
     
     #S[sensor_node][0]  B  [1] D [2] H
 
-    data_prob=np.ones(sensor_node)*0.045
+    data_prob=np.ones(sensor_node)*0.055
     return S,data_prob
 def env_init_test():
     B=np.ones(sensor_node,dtype=np.uint8).reshape(-1,1)*battle_level
     D=np.zeros(sensor_node,dtype=np.uint8).reshape(-1,1)
     H=np.zeros(sensor_node,dtype=np.uint8).reshape(-1,1)
     S=np.hstack((B,D,H))
-    data_prob=np.ones(sensor_node)*0.045
+    data_prob=np.ones(sensor_node)*0.055
     return S,data_prob
 def funEh(distance):
     Eh=[1,1]
