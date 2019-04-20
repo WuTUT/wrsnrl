@@ -15,7 +15,6 @@ import sys
 if "../" not in sys.path:
   sys.path.append("../")
 
-env=wrsn(sensor_node)
 
 class Estimator():
     """Q-Value Estimator neural network.
@@ -57,7 +56,7 @@ class Estimator():
         fc1 = tf.contrib.layers.fully_connected(X, 64)
         fc2 = tf.contrib.layers.fully_connected(fc1, 48)
 
-        self.adv= tf.contrib.layers.fully_connected(fc2, env.action_space.n,activation_fn=None) 
+        self.adv= tf.contrib.layers.fully_connected(fc2, sensor_node*2,activation_fn=None) 
         self.val= tf.contrib.layers.fully_connected(fc2, 1,activation_fn=None) 
         self.predictions = self.val+self.adv- tf.reduce_mean(self.adv,axis=1,keep_dims=True)
         #self.predictions = tf.contrib.layers.fully_connected(fc2, env.action_space.n,activation_fn=None)
@@ -356,39 +355,41 @@ def deep_q_learning(sess,
     q_estimator.summary_writer.add_graph(sess.graph)
     return stats
 
+if __name__ == "__main__":
+    
+    env=wrsn(sensor_node)
+    tf.reset_default_graph()
 
-tf.reset_default_graph()
+    # Where we save our checkpoints and graphs
+    experiment_dir = os.path.abspath("./experiments/wrsn2")
 
-# Where we save our checkpoints and graphs
-experiment_dir = os.path.abspath("./experiments/wrsn2")
+    # Create a glboal step variable
+    global_step = tf.Variable(0, name='global_step', trainable=False)
 
-# Create a glboal step variable
-global_step = tf.Variable(0, name='global_step', trainable=False)
+    # Create estimators
+    q_estimator = Estimator(scope="q", summaries_dir=experiment_dir)
+    target_estimator = Estimator(scope="target_q")
 
-# Create estimators
-q_estimator = Estimator(scope="q", summaries_dir=experiment_dir)
-target_estimator = Estimator(scope="target_q")
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        for t, stats in deep_q_learning(sess,
+                                        env,
+                                        q_estimator=q_estimator,
+                                        target_estimator=target_estimator,
+                                        experiment_dir=experiment_dir,
+                                        num_episodes=12000,
+                                        replay_buffer_size=3000000,
+                                        replay_buffer_init_size=1500000,
+                                        update_target_estimator_every=10000,
+                                        epsilon_start=1.0,
+                                        epsilon_end=0.0,
+                                        epsilon_decay_steps=11500000,
+                                        discount_factor=0.99,
+                                        batch_size=32,
+                                        prioritized_replay_alpha=0.6,
+                                        prioritized_replay_beta0=0.4,
+                                        prioritized_replay_beta_iters=9500000,
+                                        prioritized_replay_eps=1e-6):
 
-with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
-    for t, stats in deep_q_learning(sess,
-                                    env,
-                                    q_estimator=q_estimator,
-                                    target_estimator=target_estimator,
-                                    experiment_dir=experiment_dir,
-                                    num_episodes=2500,
-                                    replay_buffer_size=3000000,
-                                    replay_buffer_init_size=2000000,
-                                    update_target_estimator_every=10000,
-                                    epsilon_start=1.0,
-                                    epsilon_end=0.01,
-                                    epsilon_decay_steps=2400000,
-                                    discount_factor=0.99,
-                                    batch_size=32,
-                                    prioritized_replay_alpha=0.6,
-                                    prioritized_replay_beta0=0.4,
-                                    prioritized_replay_beta_iters=1500000,
-                                    prioritized_replay_eps=1e-6):
-
-        print("\nEpisode Reward: {},Episode Transbag:{}".format(stats.episode_rewards[-1],stats.episode_lossbag[-1]))
-    plotting.plot_episode_stats(stats)
+            print("\nEpisode Reward: {},Episode Transbag:{}".format(stats.episode_rewards[-1],stats.episode_lossbag[-1]))
+    

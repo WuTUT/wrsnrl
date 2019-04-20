@@ -4,10 +4,10 @@ from gym import spaces
 
 #define constant value
 
-queue_len=10
-battle_level=20
+queue_len=8
+battle_level=10
 distance_level=3
-sensor_node=12
+sensor_node=15
 
 
 def env_init():
@@ -15,21 +15,21 @@ def env_init():
     B=np.random.randint(0,battle_level+1,sensor_node).reshape(-1,1)
     D=np.random.randint(0,queue_len+1,sensor_node).reshape(-1,1)
     #H=np.random.randint(0,distance_level,sensor_node).reshape(-1,1)
-    H=([0,1,2])*4
+    H=([0,1,2])*5
     H=np.array(H,dtype=np.uint8).reshape(-1,1)
     S=np.hstack((B,D,H))
     
     #S[sensor_node][0]  B  [1] D [2] H
 
-    data_prob=np.ones(sensor_node)*0.03
+    data_prob=np.ones(sensor_node)*0.036
     return S,data_prob
 def env_init_test():
-    B=np.ones(sensor_node,dtype=np.uint8).reshape(-1,1)*battle_level
+    B=np.ones(sensor_node,dtype=np.uint8).reshape(-1,1)*4
     D=np.zeros(sensor_node,dtype=np.uint8).reshape(-1,1)
-    H=([0,1,2])*4
+    H=([0,1,2])*5
     H=np.array(H,dtype=np.uint8).reshape(-1,1)
     S=np.hstack((B,D,H))
-    data_prob=np.ones(sensor_node)*0.03
+    data_prob=np.ones(sensor_node)*0.036
     return S,data_prob
 def funEh(distance):
     Eh=[3,2,1]

@@ -22,7 +22,16 @@ import tensorflow as tf
 #     print(key)
 #     print(nsQ[key])
 #     break
-# a=np.array([[2,1,3,4],[2,3,4,1]])
+a=np.array([1,5,5,5])
+d=np.where(a==np.max(a))
+b=np.array([0,1,2,0])
+c=np.max(b[d])
+s=np.where(b==c)[0][0]
+print(s)
+
+
+
+#print(c)
 # c=([2,1])*2
 # print(c)
 # b= a/c
@@ -30,7 +39,7 @@ import tensorflow as tf
 # print(c[2:])
 
 
-H=([0,1,2])*4
-H=np.array(H,dtype=np.uint8).reshape(-1,1)
-print(H)
-print(type(H))
+# H=([0,1,2])*4
+# H=np.array(H,dtype=np.uint8).reshape(-1,1)
+# print(H)
+# print(type(H))
