@@ -75,7 +75,8 @@ class Estimator():
         self.loss = tf.reduce_mean(self.losses*self.importance_weights_ph)
 
         # Optimizer Parameters from original paper
-        self.optimizer = tf.train.RMSPropOptimizer(0.00010, 0.95, 0.01)
+        #self.optimizer = tf.train.RMSPropOptimizer(0.00010, 0.95, 0.01)
+        self.optimizer = tf.train.AdamOptimizer(0.0000625,epsilon=1.5e-4)
         self.train_op = self.optimizer.minimize(self.loss, global_step=tf.contrib.framework.get_global_step())
 
         # Summaries for Tensorboard
@@ -293,11 +294,7 @@ def deep_q_learning(sess,
             episode_summary.value.add(simple_value=epsilon, tag="epsilon")
             q_estimator.summary_writer.add_summary(episode_summary, total_t)
 
-            # Maybe update the target estimator
-            if total_t % update_target_estimator_every == 0:
-                copy_model_parameters(sess, q_estimator, target_estimator)
-                print("\nCopied model parameters to target network.")
-
+            
             # Print out which step we're on, useful for debugging.
             print("\rStep {} ({}) @ Episode {}/{}, loss: {}".format(
                     t, total_t, i_episode + 1, num_episodes, loss), end="")
@@ -337,6 +334,12 @@ def deep_q_learning(sess,
                 break
             state = next_state
             total_t += 1
+        # Maybe update the target estimator
+        if (i_episode+1) % update_target_estimator_every == 0:
+            copy_model_parameters(sess, q_estimator, target_estimator)
+            print("\nCopied model parameters to target network.")
+
+
 
         # Add summaries to tensorboard
         episode_summary = tf.Summary()
@@ -377,18 +380,18 @@ if __name__ == "__main__":
                                         q_estimator=q_estimator,
                                         target_estimator=target_estimator,
                                         experiment_dir=experiment_dir,
-                                        num_episodes=12000,
+                                        num_episodes=25500,
                                         replay_buffer_size=3000000,
                                         replay_buffer_init_size=1500000,
-                                        update_target_estimator_every=10000,
+                                        update_target_estimator_every=10,
                                         epsilon_start=1.0,
-                                        epsilon_end=0.0,
-                                        epsilon_decay_steps=11500000,
+                                        epsilon_end=0.001,
+                                        epsilon_decay_steps=25000000,
                                         discount_factor=0.99,
                                         batch_size=32,
                                         prioritized_replay_alpha=0.6,
                                         prioritized_replay_beta0=0.4,
-                                        prioritized_replay_beta_iters=9500000,
+                                        prioritized_replay_beta_iters=15000000,
                                         prioritized_replay_eps=1e-6):
 
             print("\nEpisode Reward: {},Episode Transbag:{}".format(stats.episode_rewards[-1],stats.episode_lossbag[-1]))
